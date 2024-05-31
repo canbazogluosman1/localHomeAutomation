@@ -8,13 +8,31 @@ from typing import List
 from pydantic import BaseModel, Field
 from rich.pretty import pprint
 import time
-aktif_dinleme = False
+import requests
+
+ESP8266_IP = "192.168.1.12"  # ESP8266'nın IP adresi
+
 class FunctionScript(BaseModel):
-    functionName: List[str] = Field(..., description="Görevi gerçekleştirmek için sadece gerekli fonksiyonları listele (string). Lamba, kapi, polisiAra, ambulansiAra, robotSüpürgeyiCalistir veya pencere")
+    functionName: List[str] = Field(..., description="Görevi gerçekleştirmek için sadece gerekli fonksiyonları listele (string) ve true yada false degerleri döndür. Lamba, kapi, polisiAra, ambulansiAra, robotSüpürgeyiCalistir veya pencere")
     Value: str = Field(..., description="Görevi gerçekleştirmek için değer.")
 
 def Lamba(value):
-    return "Lamba: " + value
+    try:
+        if value.lower() == "true":
+            response = requests.get(f"http://{ESP8266_IP}/ledon")
+            if response.status_code == 200:
+                return "Lamba açıldı."
+            else:
+                return f"Error: {response.status_code}"
+        elif value.lower() == "false":
+            response = requests.get(f"http://{ESP8266_IP}/ledoff")
+            if response.status_code == 200:
+                return "Lamba kapatıldı."
+            else:
+                return f"Error: {response.status_code}"
+    except Exception as e:
+        return f"HTTP request failed: {e}"
+    return "Geçersiz lamba komutu."
 
 def pencere(value):
     return "Pencere: " + value
@@ -83,17 +101,17 @@ def main(func_assistant=None, stream=None, recognizer=None, p=None):
                         answer = func_assistant.run(result['text'])
                         print("answer",answer)
                         for f in answer.functionName:
-                            if f == "Lamba":
+                            if f.lower() == "lamba":
                                 pprint(Lamba(answer.Value))
-                            elif f == "pencere":
+                            elif f.lower() == "pencere":
                                 pprint(pencere(answer.Value))
-                            elif f == "kapi":
+                            elif f.lower() == "kapi":
                                 pprint(kapi(answer.Value))
-                            elif f == "polisiAra":
+                            elif f.lower() == "polisiara":
                                 pprint(polisiAra(answer.Value))
-                            elif f == "ambulansiAra":
+                            elif f.lower() == "ambulansiar":
                                 pprint(ambulansiAra(answer.Value))
-                            elif f == "robotSüpürgeyiCalistir":
+                            elif f.lower() == "robotsüpürgeyicalistir":
                                 pprint(robotSüpürgeyiCalistir(answer.Value))
                 except Exception as e:
                     print("The error is: ", e)
